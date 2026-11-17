@@ -63,5 +63,8 @@
             <action android:name="android.intent.action.OPEN_DOCUMENT"/>
             <data android:mimeType="video/*"/>
         </intent>
+
+        <package android:name="ru.zdevs.zarchiver"/>
+        <package android:name="com.lonelycatgames.Xplore"/>
     </queries>
 </manifest>
