@@ -1451,8 +1451,7 @@ class SettingsTile extends StatelessWidget {
 // VIDEO PLAYER PAGE
 // ==========================================
 
- class VideoPlayerPage extends StatefulWidget {
-
+class VideoPlayerPage extends StatefulWidget {
   final String videoPath;
 
   const VideoPlayerPage({
@@ -1654,37 +1653,37 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   Future<void> toggleOrientation() async {
-  controlsTimer?.cancel();
+    controlsTimer?.cancel();
 
-  resetZoom();
+    resetZoom();
 
-  if (isLandscape) {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    if (isLandscape) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      isLandscape = false;
-      showControls = true;
-    });
-  } else {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+      setState(() {
+        isLandscape = false;
+        showControls = true;
+      });
+    } else {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      isLandscape = true;
-      showControls = true;
-    });
+      setState(() {
+        isLandscape = true;
+        showControls = true;
+      });
+    }
+
+    scheduleControlsHide();
   }
-
-  scheduleControlsHide();
-}
 
   void setLoopStart() {
     final position = controller.value.position;
@@ -2165,21 +2164,28 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                         ),
                       ),
 
-                      Center(
-                        child: IconButton(
-                          onPressed: togglePlay,
-                          iconSize: 76,
-                          style: IconButton.styleFrom(
-                            backgroundColor:
-                                Colors.black.withValues(alpha: 0.45),
-                            shape: const CircleBorder(),
-                          ),
-                          icon: Icon(
-                            controller.value.isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            color: Colors.white,
-                            size: 55,
+                      // Play / Pause Button
+                      Positioned(
+                        top: 0,
+                        bottom: isLandscape ? 140 : 0,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: IconButton(
+                            onPressed: togglePlay,
+                            iconSize: 76,
+                            style: IconButton.styleFrom(
+                              backgroundColor:
+                                  Colors.black.withValues(alpha: 0.45),
+                              shape: const CircleBorder(),
+                            ),
+                            icon: Icon(
+                              controller.value.isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 55,
+                            ),
                           ),
                         ),
                       ),
@@ -2218,11 +2224,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               buildSeekBar(),
-                              if (!isLandscape) ...[
 
-                                  const SizedBox(height: 8),
-                                  buildLoopControls(),
-                                  const SizedBox(height: 8),
+                              if (!isLandscape) ...[
+                                const SizedBox(height: 8),
+                                buildLoopControls(),
+                                const SizedBox(height: 8),
                               ],
 
                               Row(
