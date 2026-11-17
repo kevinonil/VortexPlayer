@@ -87,7 +87,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-        final pages = [
+    final pages = [
       HomePage(onThemeChanged: widget.onThemeChanged),
       MediaPage(type: 'Music'),
       PlaylistPage(),
@@ -128,7 +128,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
             IconButton(
               onPressed: () {
-                setState(() => selectedIndex = 4);
+                setState(() => selectedIndex = 3);
               },
               icon: const Icon(Icons.settings_outlined),
             ),
@@ -156,11 +156,6 @@ class _MainScreenState extends State<MainScreen> {
                 icon: Icon(Icons.explore_outlined),
                 selectedIcon: Icon(Icons.explore),
                 label: 'Discover',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.video_library_outlined),
-                selectedIcon: Icon(Icons.video_library),
-                label: 'Videos',
               ),
               NavigationDestination(
                 icon: Icon(Icons.music_note_outlined),
