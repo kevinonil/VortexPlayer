@@ -138,41 +138,39 @@ class _MainScreenState extends State<MainScreen> {
         children: pages,
       ),
 
-      bottomNavigationBar: Column(
+            bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const MiniPlayer(),
+
           NavigationBar(
             selectedIndex: selectedIndex,
             onDestinationSelected: (index) {
               setState(() => selectedIndex = index);
             },
             destinations: const [
-  NavigationDestination(
-    icon: Icon(Icons.explore_outlined),
-    selectedIcon: Icon(Icons.explore),
-    label: 'Discover',
-  ),
-  NavigationDestination(
-    icon: Icon(Icons.music_note_outlined),
-    selectedIcon: Icon(Icons.music_note),
-    label: 'Music',
-  ),
-  NavigationDestination(
-    icon: Icon(Icons.queue_music),
-    label: 'Playlists',
-  ),
-  NavigationDestination(
-    icon: Icon(Icons.settings_outlined),
-    label: 'Settings',
-  ),
-],
+              NavigationDestination(
+                icon: Icon(Icons.explore_outlined),
+                selectedIcon: Icon(Icons.explore),
+                label: 'Discover',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.music_note_outlined),
+                selectedIcon: Icon(Icons.music_note),
+                label: 'Music',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.queue_music),
+                label: 'Playlists',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                label: 'Settings',
+              ),
+            ],
           ),
         ],
       ),
-    );
-  }
-}
 
 // ==========================================
 // HOME PAGE
@@ -227,26 +225,17 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 15),
 
         Row(
-          children: [
-            Expanded(
-              child: LibraryCard(
-                title: 'Videos',
-                count: '0 Videos',
-                icon: Icons.movie_creation_outlined,
-                color: purple,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: LibraryCard(
-                title: 'Music',
-                count: '0 Tracks',
-                icon: Icons.graphic_eq,
-                color: pink,
-              ),
-            ),
-          ],
-        ),
+  children: [
+    Expanded(
+      child: LibraryCard(
+        title: 'Music',
+        count: 'Your Music Library',
+        icon: Icons.graphic_eq,
+        color: pink,
+      ),
+    ),
+  ],
+),
 
         const SizedBox(height: 30),
 
