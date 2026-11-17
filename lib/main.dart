@@ -1473,6 +1473,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   double playbackSpeed = 1.0;
 
+  Duration? loopStart;
+  Duration? loopEnd;
+
+  bool loopJumpInProgress = false;
+
   final List<double> speeds = [
     0.25,
     0.5,
@@ -1491,6 +1496,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     controller = VideoPlayerController.file(
       File(widget.videoPath),
     );
+
+    controller.addListener(checkLoop);
 
     initializePlayer();
   }
@@ -1515,6 +1522,86 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         ),
       );
     }
+  }
+
+  void checkLoop() async {
+    if (!isReady ||
+        loopStart == null ||
+        loopEnd == null ||
+        loopJumpInProgress) {
+      return;
+    }
+
+    if (!controller.value.isPlaying) return;
+
+    final position = controller.value.position;
+
+    if (position >= loopEnd!) {
+      loopJumpInProgress = true;
+
+      try {
+        await controller.seekTo(loopStart!);
+      } catch (_) {
+        // Ignore temporary seek errors.
+      } finally {
+        loopJumpInProgress = false;
+      }
+    }
+  }
+
+  void setLoopStart() {
+    final position = controller.value.position;
+
+    setState(() {
+      loopStart = position;
+
+      if (loopEnd != null && loopStart! >= loopEnd!) {
+        loopEnd = null;
+      }
+    });
+  }
+
+  void setLoopEnd() {
+    if (loopStart == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Set point A first.'),
+        ),
+      );
+      return;
+    }
+
+    final position = controller.value.position;
+
+    if (position <= loopStart!) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Point B must be after point A.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      loopEnd = position;
+    });
+  }
+
+  void clearLoop() {
+    setState(() {
+      loopStart = null;
+      loopEnd = null;
+    });
+  }
+
+  String formatDuration(Duration? duration) {
+    if (duration == null) return '--:--';
+
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+
+    return '${minutes.toString().padLeft(2, '0')}:'
+        '${seconds.toString().padLeft(2, '0')}';
   }
 
   void resetZoom() {
@@ -1598,6 +1685,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   @override
   void dispose() {
+    controller.removeListener(checkLoop);
     controller.dispose();
     transformationController.dispose();
     super.dispose();
@@ -1686,14 +1774,70 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                           left: 15,
                           right: 15,
                           bottom: 10,
-                          child: VideoProgressIndicator(
-                            controller,
-                            allowScrubbing: true,
-                            colors: const VideoProgressColors(
-                              playedColor: purple,
-                              bufferedColor: Colors.white38,
-                              backgroundColor: Colors.white12,
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              VideoProgressIndicator(
+                                controller,
+                                allowScrubbing: true,
+                                colors: const VideoProgressColors(
+                                  playedColor: purple,
+                                  bufferedColor: Colors.white38,
+                                  backgroundColor: Colors.white12,
+                                ),
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  TextButton(
+                                    onPressed: setLoopStart,
+                                    child: Text(
+                                      'A  ${formatDuration(loopStart)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+
+                                  TextButton(
+                                    onPressed: setLoopEnd,
+                                    child: Text(
+                                      'B  ${formatDuration(loopEnd)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+
+                                  IconButton(
+                                    onPressed: clearLoop,
+                                    icon: const Icon(
+                                      Icons.repeat_rounded,
+                                      color: Colors.white,
+                                    ),
+                                    tooltip: 'Clear A-B Loop',
+                                  ),
+                                ],
+                              ),
+
+                              if (loopStart != null &&
+                                  loopEnd != null)
+                                const Text(
+                                  'A-B LOOP ACTIVE',
+                                  style: TextStyle(
+                                    color: purple,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                     ],
