@@ -1008,6 +1008,350 @@ class _MediaPageState extends State<MediaPage> {
                                               );
                                             }
 
+class MediaPage extends StatefulWidget {
+  final String type;
+
+  const MediaPage({
+    super.key,
+    required this.type,
+  });
+
+  @override
+  State<MediaPage> createState() => _MediaPageState();
+}
+
+class _MediaPageState extends State<MediaPage> {
+  final MediaService mediaService = MediaService();
+
+  late Future<List<AssetEntity>> mediaFuture;
+
+  final ScrollController _scrollController = ScrollController();
+
+  List<AssetEntity> _videos = [];
+
+  bool _isLoadingMore = false;
+  Object? _loadMoreError;
+
+  bool get isVideo => widget.type == 'Videos';
+
+  @override
+  void initState() {
+    super.initState();
+
+    _scrollController.addListener(_onScroll);
+
+    loadMedia();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void loadMedia() {
+    _videos.clear();
+    _isLoadingMore = false;
+    _loadMoreError = null;
+
+    mediaFuture = _loadInitialMedia();
+  }
+
+  Future<List<AssetEntity>> _loadInitialMedia() async {
+    if (isVideo) {
+      final videos = await mediaService.getVideos();
+
+      _videos = videos;
+
+      return videos;
+    }
+
+    return mediaService.getAudios();
+  }
+
+  void _onScroll() {
+    if (!isVideo || !_scrollController.hasClients) {
+      return;
+    }
+
+    if (_scrollController.position.extentAfter < 500) {
+      _loadMoreVideos();
+    }
+  }
+
+  Future<void> _loadMoreVideos() async {
+    if (_isLoadingMore ||
+        !mediaService.hasMoreVideos ||
+        _loadMoreError != null) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final newVideos = await mediaService.loadMoreVideos();
+
+      if (!mounted) return;
+
+      setState(() {
+        _videos.addAll(newVideos);
+        _isLoadingMore = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _loadMoreError = error;
+        _isLoadingMore = false;
+      });
+    }
+  }
+
+  Future<void> refreshMedia() async {
+    setState(() {
+      loadMedia();
+    });
+
+    await mediaFuture;
+  }
+
+  String formatDuration(int seconds) {
+    final duration = Duration(seconds: seconds);
+
+    final minutes = duration.inMinutes;
+    final remainingSeconds = duration.inSeconds % 60;
+
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 15, 18, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.type,
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(
+            isVideo
+                ? 'YOUR VIDEO COLLECTION'
+                : 'YOUR MUSIC COLLECTION',
+            style: const TextStyle(
+              color: purple,
+              letterSpacing: 3,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Expanded(
+            child: FutureBuilder<List<AssetEntity>>(
+              future: mediaFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: purple,
+                    ),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: pink,
+                          size: 45,
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        const Text(
+                          'Something went wrong',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        ElevatedButton(
+                          onPressed: refreshMedia,
+                          child: const Text('Try Again'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final List<AssetEntity> media =
+                    isVideo ? _videos : snapshot.data ?? [];
+
+                if (media.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isVideo
+                              ? Icons.video_library_outlined
+                              : Icons.library_music_outlined,
+                          size: 65,
+                          color: purple,
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        const Text(
+                          'Your library is empty',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        const Text(
+                          'No media files were found.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        OutlinedButton.icon(
+                          onPressed: refreshMedia,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Refresh'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          '${media.length} ${isVideo ? 'Videos' : 'Tracks'}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+
+                        const Spacer(),
+
+                        IconButton(
+                          onPressed: refreshMedia,
+                          icon: const Icon(Icons.refresh),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Expanded(
+                      child: GridView.builder(
+                        controller: isVideo
+                            ? _scrollController
+                            : null,
+
+                        itemCount: media.length +
+                            (isVideo &&
+                                    (_isLoadingMore ||
+                                        _loadMoreError != null)
+                                ? 1
+                                : 0),
+
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 14,
+                          childAspectRatio: 0.85,
+                        ),
+
+                        itemBuilder: (context, index) {
+                          if (index >= media.length) {
+                            if (_loadMoreError != null) {
+                              return Center(
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _loadMoreError = null;
+                                    });
+
+                                    _loadMoreVideos();
+                                  },
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Retry'),
+                                ),
+                              );
+                            }
+
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: purple,
+                              ),
+                            );
+                          }
+
+                          final asset = media[index];
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainer,
+                              borderRadius:
+                                  BorderRadius.circular(20),
+                            ),
+
+                            clipBehavior: Clip.antiAlias,
+
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      if (isVideo)
+                                        FutureBuilder(
+                                          future: asset.thumbnailData,
+                                          builder: (context, thumb) {
+                                            if (thumb.hasData &&
+                                                thumb.data != null) {
+                                              return Image.memory(
+                                                thumb.data!,
+                                                fit: BoxFit.cover,
+                                              );
+                                            }
+
                                             return const ColoredBox(
                                               color: Color(0xFF211936),
                                               child: Center(
@@ -1022,7 +1366,8 @@ class _MediaPageState extends State<MediaPage> {
                                         )
                                       else
                                         Container(
-                                          decoration: const BoxDecoration(
+                                          decoration:
+                                              const BoxDecoration(
                                             gradient: LinearGradient(
                                               colors: [
                                                 Color(0xFF48208C),
@@ -1097,6 +1442,7 @@ class _MediaPageState extends State<MediaPage> {
       ),
     );
   }
+}  }
 }
 
 // ==========================================
