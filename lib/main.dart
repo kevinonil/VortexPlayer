@@ -88,14 +88,15 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-  HomePage(onThemeChanged: widget.onThemeChanged),
-  const MediaPage(type: 'Music'),
-  const PlaylistPage(),
-  SettingsPage(
-    isDark: widget.isDark,
-    onThemeChanged: widget.onThemeChanged,
-  ),
-];
+      HomePage(onThemeChanged: widget.onThemeChanged),
+      MediaPage(type: 'Videos'),
+      MediaPage(type: 'Music'),
+      PlaylistPage(),
+      SettingsPage(
+        isDark: widget.isDark,
+        onThemeChanged: widget.onThemeChanged,
+      ),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -128,7 +129,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
             IconButton(
               onPressed: () {
-                setState(() => selectedIndex = 3);
+                setState(() => selectedIndex = 4);
               },
               icon: const Icon(Icons.settings_outlined),
             ),
@@ -141,10 +142,10 @@ class _MainScreenState extends State<MainScreen> {
         children: pages,
       ),
 
-            bottomNavigationBar: Column(
+      bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const MiniPlayer(),
+          MiniPlayer(),
 
           NavigationBar(
             selectedIndex: selectedIndex,
@@ -156,6 +157,11 @@ class _MainScreenState extends State<MainScreen> {
                 icon: Icon(Icons.explore_outlined),
                 selectedIcon: Icon(Icons.explore),
                 label: 'Discover',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.video_library_outlined),
+                selectedIcon: Icon(Icons.video_library),
+                label: 'Videos',
               ),
               NavigationDestination(
                 icon: Icon(Icons.music_note_outlined),
@@ -174,7 +180,9 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-
+    );
+  }
+}
 // ==========================================
 // HOME PAGE
 // ==========================================
