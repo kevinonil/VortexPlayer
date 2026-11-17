@@ -1474,6 +1474,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   bool isReady = false;
   bool showControls = true;
   bool isFullscreen = false;
+  bool isLandscape = false;
 
   bool repeatVideo = false;
   bool restartInProgress = false;
