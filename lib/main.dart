@@ -125,7 +125,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
             IconButton(
               onPressed: () {
-                setState(() => selectedIndex = 4);
+                setState(() => selectedIndex = 3);
               },
               icon: const Icon(Icons.settings_outlined),
             ),
@@ -148,30 +148,25 @@ class _MainScreenState extends State<MainScreen> {
               setState(() => selectedIndex = index);
             },
             destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.explore_outlined),
-                selectedIcon: Icon(Icons.explore),
-                label: 'Discover',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.movie_outlined),
-                selectedIcon: Icon(Icons.movie),
-                label: 'Videos',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.music_note_outlined),
-                selectedIcon: Icon(Icons.music_note),
-                label: 'Music',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.queue_music),
-                label: 'Playlists',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                label: 'Settings',
-              ),
-            ],
+  NavigationDestination(
+    icon: Icon(Icons.explore_outlined),
+    selectedIcon: Icon(Icons.explore),
+    label: 'Discover',
+  ),
+  NavigationDestination(
+    icon: Icon(Icons.music_note_outlined),
+    selectedIcon: Icon(Icons.music_note),
+    label: 'Music',
+  ),
+  NavigationDestination(
+    icon: Icon(Icons.queue_music),
+    label: 'Playlists',
+  ),
+  NavigationDestination(
+    icon: Icon(Icons.settings_outlined),
+    label: 'Settings',
+  ),
+],
           ),
         ],
       ),
