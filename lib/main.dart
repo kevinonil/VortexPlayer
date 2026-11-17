@@ -1736,6 +1736,31 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     transformationController.value = Matrix4.identity();
   }
 
+  Future<void> toggleOrientation() async {
+  if (isLandscape) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+
+    if (!mounted) return;
+
+    setState(() {
+      isLandscape = false;
+    });
+  } else {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+
+    if (!mounted) return;
+
+    setState(() {
+      isLandscape = true;
+    });
+  }
+  }
+
   Future<void> changeSpeed(double speed) async {
     await controller.setPlaybackSpeed(speed);
 
