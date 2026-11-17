@@ -1656,10 +1656,17 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   String formatDuration(Duration? duration) {
     if (duration == null) return '--:--';
 
-    final minutes = duration.inMinutes;
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
     final seconds = duration.inSeconds % 60;
 
-    return '${minutes.toString().padLeft(2, '0')}:'
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:'
+          '${minutes.toString().padLeft(2, '0')}:'
+          '${seconds.toString().padLeft(2, '0')}';
+    }
+
+    return '${duration.inMinutes.toString().padLeft(2, '0')}:'
         '${seconds.toString().padLeft(2, '0')}';
   }
 
@@ -1826,8 +1833,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                 onDoubleTap: resetZoom,
 
                 child: InteractiveViewer(
-                  transformationController:
-                      transformationController,
+                  transformationController: transformationController,
                   minScale: 1,
                   maxScale: 5,
                   panEnabled: true,
@@ -1902,15 +1908,44 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                                 VideoProgressIndicator(
                                   controller,
                                   allowScrubbing: true,
-                                  colors:
-                                      const VideoProgressColors(
+                                  colors: const VideoProgressColors(
                                     playedColor: purple,
                                     bufferedColor: Colors.white38,
                                     backgroundColor: Colors.white12,
                                   ),
                                 ),
 
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 8),
+
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      formatDuration(
+                                        controller.value.position,
+                                      ),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+
+                                    Text(
+                                      formatDuration(
+                                        controller.value.duration,
+                                      ),
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 8),
 
                                 Row(
                                   mainAxisAlignment:
