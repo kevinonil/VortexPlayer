@@ -2218,12 +2218,12 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               buildSeekBar(),
+                              if (!isLandscape) ...[
 
-                              const SizedBox(height: 8),
-
-                              buildLoopControls(),
-
-                              const SizedBox(height: 8),
+                                  const SizedBox(height: 8),
+                                  buildLoopControls(),
+                                  const SizedBox(height: 8),
+                              ],
 
                               Row(
                                 mainAxisAlignment:
