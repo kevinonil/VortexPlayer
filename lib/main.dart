@@ -196,8 +196,66 @@ class HomePage extends StatelessWidget {
         'com.vortexplayer.vortex_player/file_picker',
       );
 
+      final rawManagers =
+          await platform.invokeListMethod<dynamic>(
+        'getFileManagers',
+      );
+
+      if (!context.mounted) return;
+
+      final managers = (rawManagers ?? [])
+          .map(
+            (item) => Map<String, String>.from(item as Map),
+          )
+          .toList();
+
+      if (managers.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No compatible file managers found.'),
+          ),
+        );
+        return;
+      }
+
+      final selectedPackage = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Choose File Manager'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: managers.map((manager) {
+                return ListTile(
+                  leading: const Icon(
+                    Icons.folder_open_rounded,
+                    color: purple,
+                  ),
+                  title: Text(manager['appName'] ?? 'Unknown'),
+                  onTap: () {
+                    Navigator.pop(
+                      dialogContext,
+                      manager['packageName'],
+                    );
+                  },
+                );
+              }).toList(),
+            ),
+          );
+        },
+      );
+
+      if (selectedPackage == null || !context.mounted) {
+        return;
+      }
+
       final String? videoPath =
-          await platform.invokeMethod<String>('pickVideo');
+          await platform.invokeMethod<String>(
+        'pickVideo',
+        {
+          'packageName': selectedPackage,
+        },
+      );
 
       if (videoPath == null || !context.mounted) {
         return;
