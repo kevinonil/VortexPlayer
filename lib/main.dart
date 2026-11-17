@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 
 void main() {
   runApp(const VortexApp());
@@ -1468,8 +1469,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   final TransformationController transformationController =
       TransformationController();
 
+  Timer? controlsTimer;
+
   bool isReady = false;
   bool showControls = true;
+  bool isFullscreen = false;
 
   double playbackSpeed = 1.0;
 
@@ -1513,6 +1517,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       });
 
       controller.play();
+      scheduleControlsHide();
     } catch (error) {
       if (!mounted) return;
 
@@ -1522,6 +1527,54 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         ),
       );
     }
+  }
+
+  void scheduleControlsHide() {
+    controlsTimer?.cancel();
+
+    if (!controller.value.isPlaying) return;
+
+    controlsTimer = Timer(
+      const Duration(seconds: 3),
+      () {
+        if (!mounted || !controller.value.isPlaying) return;
+
+        setState(() {
+          showControls = false;
+        });
+      },
+    );
+  }
+
+  void revealControls() {
+    if (!showControls) {
+      setState(() {
+        showControls = true;
+      });
+    }
+
+    scheduleControlsHide();
+  }
+
+  Future<void> toggleFullscreen() async {
+    controlsTimer?.cancel();
+
+    setState(() {
+      isFullscreen = !isFullscreen;
+      showControls = true;
+    });
+
+    if (isFullscreen) {
+      await SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.immersiveSticky,
+      );
+    } else {
+      await SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.edgeToEdge,
+      );
+    }
+
+    scheduleControlsHide();
   }
 
   void checkLoop() async {
@@ -1559,6 +1612,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         loopEnd = null;
       }
     });
+
+    scheduleControlsHide();
   }
 
   void setLoopEnd() {
@@ -1585,6 +1640,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     setState(() {
       loopEnd = position;
     });
+
+    scheduleControlsHide();
   }
 
   void clearLoop() {
@@ -1592,6 +1649,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       loopStart = null;
       loopEnd = null;
     });
+
+    scheduleControlsHide();
   }
 
   String formatDuration(Duration? duration) {
@@ -1616,9 +1675,13 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     setState(() {
       playbackSpeed = speed;
     });
+
+    scheduleControlsHide();
   }
 
   void showSpeedMenu() {
+    controlsTimer?.cancel();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF171522),
@@ -1680,25 +1743,44 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           ),
         );
       },
-    );
+    ).whenComplete(() {
+      scheduleControlsHide();
+    });
+  }
+
+  void togglePlay() {
+    if (controller.value.isPlaying) {
+      controller.pause();
+
+      controlsTimer?.cancel();
+
+      setState(() {
+        showControls = true;
+      });
+    } else {
+      controller.play();
+
+      setState(() {
+        showControls = true;
+      });
+
+      scheduleControlsHide();
+    }
   }
 
   @override
   void dispose() {
+    controlsTimer?.cancel();
+
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.edgeToEdge,
+    );
+
     controller.removeListener(checkLoop);
     controller.dispose();
     transformationController.dispose();
-    super.dispose();
-  }
 
-  void togglePlay() {
-    setState(() {
-      if (controller.value.isPlaying) {
-        controller.pause();
-      } else {
-        controller.play();
-      }
-    });
+    super.dispose();
   }
 
   @override
@@ -1706,141 +1788,184 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     return Scaffold(
       backgroundColor: Colors.black,
 
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: const Text('VORTEX PLAYER'),
-        actions: [
-          IconButton(
-            onPressed: resetZoom,
-            icon: const Icon(Icons.zoom_out_map_rounded),
-            tooltip: 'Reset Zoom',
-          ),
+      appBar: isFullscreen
+          ? null
+          : AppBar(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              title: const Text('VORTEX PLAYER'),
+              actions: [
+                IconButton(
+                  onPressed: resetZoom,
+                  icon: const Icon(Icons.zoom_out_map_rounded),
+                ),
 
-          TextButton(
-            onPressed: showSpeedMenu,
-            child: Text(
-              '${playbackSpeed}x',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+                TextButton(
+                  onPressed: showSpeedMenu,
+                  child: Text(
+                    '${playbackSpeed}x',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                IconButton(
+                  onPressed: toggleFullscreen,
+                  icon: const Icon(Icons.fullscreen_rounded),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
 
       body: Center(
         child: isReady
-            ? InteractiveViewer(
-                transformationController: transformationController,
-                minScale: 1,
-                maxScale: 5,
-                panEnabled: true,
-                scaleEnabled: true,
-                boundaryMargin: const EdgeInsets.all(100),
-                clipBehavior: Clip.hardEdge,
+            ? GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: revealControls,
+                onDoubleTap: resetZoom,
 
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      showControls = !showControls;
-                    });
-                  },
-                  onDoubleTap: resetZoom,
+                child: InteractiveViewer(
+                  transformationController:
+                      transformationController,
+                  minScale: 1,
+                  maxScale: 5,
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  boundaryMargin: const EdgeInsets.all(100),
+                  clipBehavior: Clip.hardEdge,
 
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      AspectRatio(
-                        aspectRatio: controller.value.aspectRatio,
-                        child: VideoPlayer(controller),
-                      ),
+                  child: AspectRatio(
+                    aspectRatio: controller.value.aspectRatio,
 
-                      if (showControls)
-                        IconButton(
-                          onPressed: togglePlay,
-                          iconSize: 75,
-                          color: Colors.white,
-                          icon: Icon(
-                            controller.value.isPlaying
-                                ? Icons.pause_circle_filled
-                                : Icons.play_circle_fill,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        VideoPlayer(controller),
+
+                        if (showControls) ...[
+                          IconButton(
+                            onPressed: togglePlay,
+                            iconSize: 75,
+                            color: Colors.white,
+                            icon: Icon(
+                              controller.value.isPlaying
+                                  ? Icons.pause_circle_filled
+                                  : Icons.play_circle_fill,
+                            ),
                           ),
-                        ),
 
-                      if (showControls)
-                        Positioned(
-                          left: 15,
-                          right: 15,
-                          bottom: 10,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              VideoProgressIndicator(
-                                controller,
-                                allowScrubbing: true,
-                                colors: const VideoProgressColors(
-                                  playedColor: purple,
-                                  bufferedColor: Colors.white38,
-                                  backgroundColor: Colors.white12,
-                                ),
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  TextButton(
-                                    onPressed: setLoopStart,
-                                    child: Text(
-                                      'A  ${formatDuration(loopStart)}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-
-                                  TextButton(
-                                    onPressed: setLoopEnd,
-                                    child: Text(
-                                      'B  ${formatDuration(loopEnd)}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-
-                                  IconButton(
-                                    onPressed: clearLoop,
-                                    icon: const Icon(
-                                      Icons.repeat_rounded,
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Row(
+                              children: [
+                                TextButton(
+                                  onPressed: showSpeedMenu,
+                                  child: Text(
+                                    '${playbackSpeed}x',
+                                    style: const TextStyle(
                                       color: Colors.white,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    tooltip: 'Clear A-B Loop',
-                                  ),
-                                ],
-                              ),
-
-                              if (loopStart != null &&
-                                  loopEnd != null)
-                                const Text(
-                                  'A-B LOOP ACTIVE',
-                                  style: TextStyle(
-                                    color: purple,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 2,
                                   ),
                                 ),
-                            ],
+
+                                IconButton(
+                                  onPressed: resetZoom,
+                                  icon: const Icon(
+                                    Icons.zoom_out_map_rounded,
+                                    color: Colors.white,
+                                  ),
+                                ),
+
+                                IconButton(
+                                  onPressed: toggleFullscreen,
+                                  icon: Icon(
+                                    isFullscreen
+                                        ? Icons.fullscreen_exit
+                                        : Icons.fullscreen,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                    ],
+
+                          Positioned(
+                            left: 15,
+                            right: 15,
+                            bottom: 10,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                VideoProgressIndicator(
+                                  controller,
+                                  allowScrubbing: true,
+                                  colors:
+                                      const VideoProgressColors(
+                                    playedColor: purple,
+                                    bufferedColor: Colors.white38,
+                                    backgroundColor: Colors.white12,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    TextButton(
+                                      onPressed: setLoopStart,
+                                      child: Text(
+                                        'A ${formatDuration(loopStart)}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+
+                                    TextButton(
+                                      onPressed: setLoopEnd,
+                                      child: Text(
+                                        'B ${formatDuration(loopEnd)}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+
+                                    IconButton(
+                                      onPressed: clearLoop,
+                                      icon: const Icon(
+                                        Icons.repeat_rounded,
+                                        color: Colors.white,
+                                      ),
+                                      tooltip: 'Clear A-B Loop',
+                                    ),
+                                  ],
+                                ),
+
+                                if (loopStart != null &&
+                                    loopEnd != null)
+                                  const Text(
+                                    'A-B LOOP ACTIVE',
+                                    style: TextStyle(
+                                      color: purple,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               )
