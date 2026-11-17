@@ -196,37 +196,37 @@ class HomePage extends StatelessWidget {
   });
 
   Future<void> _browseVideos(BuildContext context) async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.video,
-      );
+  try {
+    final file = await FilePicker.pickFile(
+      type: FileType.video,
+    );
 
-      if (result == null || result.files.single.path == null) {
-        return;
-      }
-
-      final videoPath = result.files.single.path!;
-
-      if (!context.mounted) return;
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VideoPlayerPage(
-            videoPath: videoPath,
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not open video: $error'),
-        ),
-      );
+    if (file == null || file.path == null) {
+      return;
     }
+
+    final videoPath = file.path!;
+
+    if (!context.mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VideoPlayerPage(
+          videoPath: videoPath,
+        ),
+      ),
+    );
+  } catch (error) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not open video: $error'),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
