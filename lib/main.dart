@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:photo_manager/photo_manager.dart';
+import 'services/media_service.dart';
 
 void main() {
   runApp(const VortexApp());
@@ -789,7 +791,68 @@ class PlaylistPage extends StatelessWidget {
         children: [
           const Text(
             'Playlists',
-            style: TextStyle(
+// ==========================================
+// MEDIA PAGE - REAL MEDIA LIBRARY
+// ==========================================
+
+class MediaPage extends StatefulWidget {
+  final String type;
+
+  const MediaPage({
+    super.key,
+    required this.type,
+  });
+
+  @override
+  State<MediaPage> createState() => _MediaPageState();
+}
+
+class _MediaPageState extends State<MediaPage> {
+  final MediaService mediaService = MediaService();
+
+  late Future<List<AssetEntity>> mediaFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    loadMedia();
+  }
+
+  void loadMedia() {
+    mediaFuture = widget.type == 'Videos'
+        ? mediaService.getVideos()
+        : mediaService.getAudios();
+  }
+
+  Future<void> refreshMedia() async {
+    setState(() {
+      loadMedia();
+    });
+
+    await mediaFuture;
+  }
+
+  String formatDuration(int seconds) {
+    final duration = Duration(seconds: seconds);
+
+    final minutes = duration.inMinutes;
+    final remainingSeconds = duration.inSeconds % 60;
+
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isVideo = widget.type == 'Videos';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 15, 18, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.type,
+            style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w900,
             ),
@@ -797,53 +860,265 @@ class PlaylistPage extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          const Text(
-            'ORGANIZE YOUR SOUND',
-            style: TextStyle(
+          Text(
+            isVideo
+                ? 'YOUR VIDEO COLLECTION'
+                : 'YOUR MUSIC COLLECTION',
+            style: const TextStyle(
               color: purple,
               letterSpacing: 3,
               fontSize: 10,
+              fontWeight: FontWeight.bold,
             ),
           ),
 
-          const SizedBox(height: 25),
+          const SizedBox(height: 20),
 
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [purple, blue],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.add_circle_outline,
-                  size: 30,
-                  color: Colors.white,
-                ),
-                SizedBox(width: 12),
-                Text(
-                  'Create New Playlist',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          Expanded(
+            child: FutureBuilder<List<AssetEntity>>(
+              future: mediaFuture,
 
-          const SizedBox(height: 30),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: purple,
+                    ),
+                  );
+                }
 
-          const Expanded(
-            child: EmptyState(
-              icon: Icons.queue_music,
-              title: 'No playlists yet',
-              subtitle: 'Create your first playlist.',
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: pink,
+                          size: 45,
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        const Text(
+                          'Something went wrong',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        ElevatedButton(
+                          onPressed: refreshMedia,
+                          child: const Text('Try Again'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final media = snapshot.data ?? [];
+
+                if (media.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isVideo
+                              ? Icons.video_library_outlined
+                              : Icons.library_music_outlined,
+                          size: 65,
+                          color: purple,
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        const Text(
+                          'Your library is empty',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        const Text(
+                          'No media files were found.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        OutlinedButton.icon(
+                          onPressed: refreshMedia,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Refresh'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          '${media.length} ${isVideo ? 'Videos' : 'Tracks'}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+
+                        const Spacer(),
+
+                        IconButton(
+                          onPressed: refreshMedia,
+                          icon: const Icon(Icons.refresh),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Expanded(
+                      child: GridView.builder(
+                        itemCount: media.length,
+
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 14,
+                          childAspectRatio: 0.85,
+                        ),
+
+                        itemBuilder: (context, index) {
+                          final asset = media[index];
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainer,
+                              borderRadius:
+                                  BorderRadius.circular(20),
+                            ),
+
+                            clipBehavior: Clip.antiAlias,
+
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      if (isVideo)
+                                        FutureBuilder(
+                                          future: asset.thumbnailData,
+                                          builder: (context, thumb) {
+                                            if (thumb.hasData &&
+                                                thumb.data != null) {
+                                              return Image.memory(
+                                                thumb.data!,
+                                                fit: BoxFit.cover,
+                                              );
+                                            }
+
+                                            return const ColoredBox(
+                                              color: Color(0xFF211936),
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.movie,
+                                                  size: 45,
+                                                  color: purple,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      else
+                                        Container(
+                                          decoration: const BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Color(0xFF48208C),
+                                                Color(0xFF17142F),
+                                              ],
+                                            ),
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.music_note,
+                                              color: Colors.white,
+                                              size: 55,
+                                            ),
+                                          ),
+                                        ),
+
+                                      if (isVideo)
+                                        Positioned(
+                                          right: 9,
+                                          bottom: 9,
+                                          child: Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black
+                                                  .withOpacity(0.7),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              formatDuration(
+                                                asset.duration,
+                                              ),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+
+                                Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Text(
+                                    asset.title ?? 'Unknown Media',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
