@@ -1465,6 +1465,9 @@ class VideoPlayerPage extends StatefulWidget {
 class _VideoPlayerPageState extends State<VideoPlayerPage> {
   late VideoPlayerController controller;
 
+  final TransformationController transformationController =
+      TransformationController();
+
   bool isReady = false;
   bool showControls = true;
 
@@ -1501,9 +1504,14 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     }
   }
 
+  void resetZoom() {
+    transformationController.value = Matrix4.identity();
+  }
+
   @override
   void dispose() {
     controller.dispose();
+    transformationController.dispose();
     super.dispose();
   }
 
@@ -1526,53 +1534,71 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: const Text('VORTEX PLAYER'),
+        actions: [
+          IconButton(
+            onPressed: resetZoom,
+            icon: const Icon(Icons.zoom_out_map_rounded),
+            tooltip: 'Reset Zoom',
+          ),
+        ],
       ),
 
       body: Center(
         child: isReady
-            ? GestureDetector(
-                onTap: () {
-                  setState(() {
-                    showControls = !showControls;
-                  });
-                },
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    AspectRatio(
-                      aspectRatio:
-                          controller.value.aspectRatio,
-                      child: VideoPlayer(controller),
-                    ),
+            ? InteractiveViewer(
+                transformationController: transformationController,
+                minScale: 1,
+                maxScale: 5,
+                panEnabled: true,
+                scaleEnabled: true,
+                boundaryMargin: const EdgeInsets.all(100),
+                clipBehavior: Clip.hardEdge,
 
-                    if (showControls)
-                      IconButton(
-                        onPressed: togglePlay,
-                        iconSize: 75,
-                        color: Colors.white,
-                        icon: Icon(
-                          controller.value.isPlaying
-                              ? Icons.pause_circle_filled
-                              : Icons.play_circle_fill,
-                        ),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      showControls = !showControls;
+                    });
+                  },
+                  onDoubleTap: resetZoom,
+
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AspectRatio(
+                        aspectRatio: controller.value.aspectRatio,
+                        child: VideoPlayer(controller),
                       ),
 
-                    if (showControls)
-                      Positioned(
-                        left: 15,
-                        right: 15,
-                        bottom: 10,
-                        child: VideoProgressIndicator(
-                          controller,
-                          allowScrubbing: true,
-                          colors: const VideoProgressColors(
-                            playedColor: purple,
-                            bufferedColor: Colors.white38,
-                            backgroundColor: Colors.white12,
+                      if (showControls)
+                        IconButton(
+                          onPressed: togglePlay,
+                          iconSize: 75,
+                          color: Colors.white,
+                          icon: Icon(
+                            controller.value.isPlaying
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_fill,
                           ),
                         ),
-                      ),
-                  ],
+
+                      if (showControls)
+                        Positioned(
+                          left: 15,
+                          right: 15,
+                          bottom: 10,
+                          child: VideoProgressIndicator(
+                            controller,
+                            allowScrubbing: true,
+                            colors: const VideoProgressColors(
+                              playedColor: purple,
+                              bufferedColor: Colors.white38,
+                              backgroundColor: Colors.white12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               )
             : const CircularProgressIndicator(
@@ -1581,4 +1607,4 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       ),
     );
   }
-}      
+}
