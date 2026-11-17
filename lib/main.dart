@@ -1654,31 +1654,37 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   Future<void> toggleOrientation() async {
-    if (isLandscape) {
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
+  controlsTimer?.cancel();
 
-      if (!mounted) return;
+  resetZoom();
 
-      setState(() {
-        isLandscape = false;
-      });
-    } else {
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+  if (isLandscape) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      setState(() {
-        isLandscape = true;
-      });
-    }
+    setState(() {
+      isLandscape = false;
+      showControls = true;
+    });
+  } else {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
 
-    scheduleControlsHide();
+    if (!mounted) return;
+
+    setState(() {
+      isLandscape = true;
+      showControls = true;
+    });
   }
+
+  scheduleControlsHide();
+}
 
   void setLoopStart() {
     final position = controller.value.position;
