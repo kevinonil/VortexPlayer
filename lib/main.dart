@@ -1451,7 +1451,7 @@ class SettingsTile extends StatelessWidget {
 // VIDEO PLAYER PAGE
 // ==========================================
 
-class VideoPlayerPage extends StatefulWidget {
+ Videclass VideoPlayerPage extends StatefulWidget {
   final String videoPath;
 
   const VideoPlayerPage({
@@ -1652,6 +1652,33 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     scheduleControlsHide();
   }
 
+  Future<void> toggleOrientation() async {
+    if (isLandscape) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        isLandscape = false;
+      });
+    } else {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        isLandscape = true;
+      });
+    }
+
+    scheduleControlsHide();
+  }
+
   void setLoopStart() {
     final position = controller.value.position;
 
@@ -1734,31 +1761,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   void resetZoom() {
     transformationController.value = Matrix4.identity();
-  }
-
-  Future<void> toggleOrientation() async {
-  if (isLandscape) {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
-
-    if (!mounted) return;
-
-    setState(() {
-      isLandscape = false;
-    });
-  } else {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-
-    if (!mounted) return;
-
-    setState(() {
-      isLandscape = true;
-    });
-  }
   }
 
   Future<void> changeSpeed(double speed) async {
@@ -2025,6 +2027,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       SystemUiMode.edgeToEdge,
     );
 
+    SystemChrome.setPreferredOrientations([]);
+
     controller.removeListener(onVideoUpdate);
     controller.dispose();
     transformationController.dispose();
@@ -2126,6 +2130,19 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                             buildControlButton(
                               icon: Icons.zoom_out_map_rounded,
                               onPressed: resetZoom,
+                              tooltip: 'Reset Zoom',
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            buildControlButton(
+                              icon: isLandscape
+                                  ? Icons.stay_current_portrait_rounded
+                                  : Icons.stay_current_landscape_rounded,
+                              onPressed: toggleOrientation,
+                              tooltip: isLandscape
+                                  ? 'Portrait'
+                                  : 'Landscape',
                             ),
 
                             const SizedBox(width: 8),
@@ -2135,6 +2152,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                                   ? Icons.fullscreen_exit_rounded
                                   : Icons.fullscreen_rounded,
                               onPressed: toggleFullscreen,
+                              tooltip: 'Fullscreen',
                             ),
                           ],
                         ),
