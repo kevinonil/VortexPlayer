@@ -1471,6 +1471,19 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   bool isReady = false;
   bool showControls = true;
 
+  double playbackSpeed = 1.0;
+
+  final List<double> speeds = [
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    1.25,
+    1.5,
+    2.0,
+    3.0,
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -1508,6 +1521,81 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     transformationController.value = Matrix4.identity();
   }
 
+  Future<void> changeSpeed(double speed) async {
+    await controller.setPlaybackSpeed(speed);
+
+    if (!mounted) return;
+
+    setState(() {
+      playbackSpeed = speed;
+    });
+  }
+
+  void showSpeedMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF171522),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(25),
+        ),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Playback Speed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: speeds.map((speed) {
+                    final selected = playbackSpeed == speed;
+
+                    return ChoiceChip(
+                      label: Text('${speed}x'),
+                      selected: selected,
+                      selectedColor: purple,
+                      backgroundColor: Colors.white10,
+                      labelStyle: TextStyle(
+                        color: Colors.white,
+                        fontWeight: selected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                      onSelected: (_) async {
+                        await changeSpeed(speed);
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 15),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     controller.dispose();
@@ -1539,6 +1627,17 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
             onPressed: resetZoom,
             icon: const Icon(Icons.zoom_out_map_rounded),
             tooltip: 'Reset Zoom',
+          ),
+
+          TextButton(
+            onPressed: showSpeedMenu,
+            child: Text(
+              '${playbackSpeed}x',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
