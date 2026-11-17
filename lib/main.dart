@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'services/media_service.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:video_player/video_player.dart';
 
 void main() {
   runApp(const VortexApp());
@@ -184,12 +187,44 @@ class HomePage extends StatelessWidget {
     required this.onThemeChanged,
   });
 
+  Future<void> _browseVideos(BuildContext context) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.video,
+      );
+
+      if (result == null || result.files.single.path == null) {
+        return;
+      }
+
+      final videoPath = result.files.single.path!;
+
+      if (!context.mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VideoPlayerPage(
+            videoPath: videoPath,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open video: $error'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 25),
       children: [
-
         const Text(
           'YOUR MEDIA UNIVERSE',
           style: TextStyle(
@@ -225,17 +260,17 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 15),
 
         Row(
-  children: [
-    Expanded(
-      child: LibraryCard(
-        title: 'Music',
-        count: 'Your Music Library',
-        icon: Icons.graphic_eq,
-        color: pink,
-      ),
-    ),
-  ],
-),
+          children: [
+            Expanded(
+              child: LibraryCard(
+                title: 'Music',
+                count: 'Your Music Library',
+                icon: Icons.graphic_eq,
+                color: pink,
+              ),
+            ),
+          ],
+        ),
 
         const SizedBox(height: 30),
 
@@ -261,10 +296,11 @@ class HomePage extends StatelessWidget {
 
         const SizedBox(height: 15),
 
-        const QuickAccessCard(
+        QuickAccessCard(
           icon: Icons.folder_open_rounded,
           title: 'Browse Files',
-          subtitle: 'Explore your device storage',
+          subtitle: 'Choose a video from your device',
+          onTap: () => _browseVideos(context),
         ),
 
         const SizedBox(height: 12),
@@ -278,7 +314,6 @@ class HomePage extends StatelessWidget {
     );
   }
 }
-
 // ==========================================
 // FEATURED CARD
 // ==========================================
@@ -499,61 +534,66 @@ class QuickAccessCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   const QuickAccessCard({
     super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: purple.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(15),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(17),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: purple.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(icon, color: purple, size: 25),
             ),
-            child: Icon(icon, color: purple, size: 25),
-          ),
 
-          const SizedBox(width: 15),
+            const SizedBox(width: 15),
 
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ],
+                  const SizedBox(height: 5),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          const Icon(Icons.arrow_forward_ios, size: 15),
-        ],
+            const Icon(Icons.arrow_forward_ios, size: 15),
+          ],
+        ),
       ),
     );
   }
 }
-
 // ==========================================
 // EMPTY STATE
 // ==========================================
