@@ -1475,6 +1475,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   bool showControls = true;
   bool isFullscreen = false;
 
+  bool repeatVideo = false;
+  bool restartInProgress = false;
+
   double playbackSpeed = 1.0;
 
   Duration? loopStart;
@@ -1535,6 +1538,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     setState(() {});
 
     checkLoop();
+    checkRepeat();
   }
 
   void checkLoop() {
@@ -1564,6 +1568,39 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     }
   }
 
+  void checkRepeat() {
+    if (!repeatVideo ||
+        restartInProgress ||
+        !controller.value.isCompleted) {
+      return;
+    }
+
+    restartCompletedVideo();
+  }
+
+  Future<void> restartCompletedVideo() async {
+    if (restartInProgress) return;
+
+    restartInProgress = true;
+
+    try {
+      await controller.seekTo(Duration.zero);
+      await controller.play();
+    } catch (_) {
+      // Ignore temporary playback errors.
+    } finally {
+      restartInProgress = false;
+    }
+  }
+
+  void toggleRepeat() {
+    setState(() {
+      repeatVideo = !repeatVideo;
+    });
+
+    scheduleControlsHide();
+  }
+
   void scheduleControlsHide() {
     controlsTimer?.cancel();
 
@@ -1581,14 +1618,16 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     );
   }
 
-  void revealControls() {
-    if (!showControls) {
-      setState(() {
-        showControls = true;
-      });
-    }
+  void toggleControlsVisibility() {
+    controlsTimer?.cancel();
 
-    scheduleControlsHide();
+    setState(() {
+      showControls = !showControls;
+    });
+
+    if (showControls) {
+      scheduleControlsHide();
+    }
   }
 
   Future<void> toggleFullscreen() async {
@@ -1798,13 +1837,14 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     required IconData icon,
     required VoidCallback onPressed,
     String? tooltip,
+    Color? color,
   }) {
     return IconButton(
       onPressed: onPressed,
       tooltip: tooltip,
       icon: Icon(
         icon,
-        color: Colors.white,
+        color: color ?? Colors.white,
         size: 23,
       ),
       style: IconButton.styleFrom(
@@ -1992,21 +2032,13 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                   tooltip: 'Reset Zoom',
                 ),
 
-                const SizedBox(width: 8),
-
-                buildControlButton(
-                  icon: Icons.fullscreen_rounded,
-                  onPressed: toggleFullscreen,
-                  tooltip: 'Fullscreen',
-                ),
-
                 const SizedBox(width: 10),
               ],
             ),
 
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: revealControls,
+        onTap: toggleControlsVisibility,
 
         child: SafeArea(
           top: !isFullscreen,
@@ -2140,9 +2172,47 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
                               buildLoopControls(),
 
+                              const SizedBox(height: 8),
+
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    onPressed: toggleRepeat,
+                                    tooltip: repeatVideo
+                                        ? 'Repeat On'
+                                        : 'Repeat Off',
+                                    icon: Icon(
+                                      Icons.repeat_rounded,
+                                      color: repeatVideo
+                                          ? purple
+                                          : Colors.white54,
+                                      size: 25,
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 6),
+
+                                  Text(
+                                    repeatVideo
+                                        ? 'REPEAT ON'
+                                        : 'REPEAT OFF',
+                                    style: TextStyle(
+                                      color: repeatVideo
+                                          ? purple
+                                          : Colors.white54,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+
                               if (loopStart != null &&
                                   loopEnd != null) ...[
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 5),
 
                                 const Text(
                                   'A-B LOOP ACTIVE',
