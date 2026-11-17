@@ -1453,6 +1453,8 @@ class SettingsTile extends StatelessWidget {
 
  class VideoPlayerPage extends StatefulWidget {
 
+  final String videoPath;
+
   const VideoPlayerPage({
     super.key,
     required this.videoPath,
