@@ -29,27 +29,39 @@ class MediaService {
   // ==========================================
 
   Future<List<AssetEntity>> getVideos() async {
-    final PermissionState permission =
-        await PhotoManager.requestPermissionExtend();
+  print('VIDEO DEBUG: Started');
 
-    if (!permission.hasAccess) {
-      return [];
-    }
+  final PermissionState permission =
+      await PhotoManager.requestPermissionExtend();
 
-    _videoAlbums = await PhotoManager.getAssetPathList(
-      type: RequestType.video,
-    );
+  print('VIDEO DEBUG: Permission = ${permission.hasAccess}');
 
-    _currentAlbumIndex = 0;
-    _currentPage = 0;
-
-    _loadedVideoIds.clear();
-
-    _videosInitialized = true;
-
-    return loadMoreVideos();
+  if (!permission.hasAccess) {
+    print('VIDEO DEBUG: Permission denied');
+    return [];
   }
 
+  print('VIDEO DEBUG: Getting albums');
+
+  _videoAlbums = await PhotoManager.getAssetPathList(
+    type: RequestType.video,
+  );
+
+  print('VIDEO DEBUG: Albums = ${_videoAlbums.length}');
+
+  _currentAlbumIndex = 0;
+  _currentPage = 0;
+  _loadedVideoIds.clear();
+  _videosInitialized = true;
+
+  print('VIDEO DEBUG: Loading first page');
+
+  final videos = await loadMoreVideos();
+
+  print('VIDEO DEBUG: Loaded videos = ${videos.length}');
+
+  return videos;
+}
   // ==========================================
   // LOAD NEXT VIDEO PAGE
   // ==========================================
