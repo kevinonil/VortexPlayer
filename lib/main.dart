@@ -1501,7 +1501,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       File(widget.videoPath),
     );
 
-    controller.addListener(checkLoop);
+    controller.addListener(onVideoUpdate);
 
     initializePlayer();
   }
@@ -1526,6 +1526,41 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           content: Text('Video loading failed: $error'),
         ),
       );
+    }
+  }
+
+  void onVideoUpdate() {
+    if (!mounted || !isReady) return;
+
+    setState(() {});
+
+    checkLoop();
+  }
+
+  void checkLoop() {
+    if (loopStart == null ||
+        loopEnd == null ||
+        loopJumpInProgress ||
+        !controller.value.isPlaying) {
+      return;
+    }
+
+    if (controller.value.position >= loopEnd!) {
+      jumpToLoopStart();
+    }
+  }
+
+  Future<void> jumpToLoopStart() async {
+    if (loopStart == null || loopJumpInProgress) return;
+
+    loopJumpInProgress = true;
+
+    try {
+      await controller.seekTo(loopStart!);
+    } catch (_) {
+      // Ignore temporary seek errors.
+    } finally {
+      loopJumpInProgress = false;
     }
   }
 
@@ -1575,31 +1610,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     }
 
     scheduleControlsHide();
-  }
-
-  void checkLoop() async {
-    if (!isReady ||
-        loopStart == null ||
-        loopEnd == null ||
-        loopJumpInProgress) {
-      return;
-    }
-
-    if (!controller.value.isPlaying) return;
-
-    final position = controller.value.position;
-
-    if (position >= loopEnd!) {
-      loopJumpInProgress = true;
-
-      try {
-        await controller.seekTo(loopStart!);
-      } catch (_) {
-        // Ignore temporary seek errors.
-      } finally {
-        loopJumpInProgress = false;
-      }
-    }
   }
 
   void setLoopStart() {
@@ -1670,6 +1680,18 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         '${seconds.toString().padLeft(2, '0')}';
   }
 
+  void seekToPosition(double seconds) {
+    final duration = controller.value.duration;
+
+    final target = Duration(
+      milliseconds: (seconds * 1000).round(),
+    );
+
+    controller.seekTo(
+      target > duration ? duration : target,
+    );
+  }
+
   void resetZoom() {
     transformationController.value = Matrix4.identity();
   }
@@ -1700,7 +1722,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(22),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1727,11 +1749,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                       selected: selected,
                       selectedColor: purple,
                       backgroundColor: Colors.white10,
-                      labelStyle: TextStyle(
+                      labelStyle: const TextStyle(
                         color: Colors.white,
-                        fontWeight: selected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
                       ),
                       onSelected: (_) async {
                         await changeSpeed(speed);
@@ -1775,6 +1794,163 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     }
   }
 
+  Widget buildControlButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    String? tooltip,
+  }) {
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: tooltip,
+      icon: Icon(
+        icon,
+        color: Colors.white,
+        size: 23,
+      ),
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+      ),
+    );
+  }
+
+  Widget buildSeekBar() {
+    final duration = controller.value.duration;
+    final position = controller.value.position;
+
+    final maxSeconds = duration.inMilliseconds > 0
+        ? duration.inMilliseconds / 1000
+        : 1.0;
+
+    final currentSeconds = position.inMilliseconds / 1000;
+
+    return Column(
+      children: [
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 5,
+            thumbShape: const RoundSliderThumbShape(
+              enabledThumbRadius: 7,
+            ),
+            overlayShape: const RoundSliderOverlayShape(
+              overlayRadius: 18,
+            ),
+            activeTrackColor: purple,
+            inactiveTrackColor: Colors.white24,
+            thumbColor: Colors.white,
+            overlayColor: purple.withValues(alpha: 0.2),
+          ),
+          child: SizedBox(
+            height: 42,
+            child: Slider(
+              min: 0,
+              max: maxSeconds,
+              value: currentSeconds.clamp(
+                0.0,
+                maxSeconds,
+              ),
+              onChanged: (value) {
+                seekToPosition(value);
+              },
+              onChangeStart: (_) {
+                controlsTimer?.cancel();
+              },
+              onChangeEnd: (_) {
+                scheduleControlsHide();
+              },
+            ),
+          ),
+        ),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              formatDuration(position),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            Text(
+              formatDuration(duration),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget buildLoopControls() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 7,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextButton(
+              onPressed: setLoopStart,
+              child: Text(
+                'A  ${formatDuration(loopStart)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+
+          Container(
+            width: 1,
+            height: 25,
+            color: Colors.white24,
+          ),
+
+          Expanded(
+            child: TextButton(
+              onPressed: setLoopEnd,
+              child: Text(
+                'B  ${formatDuration(loopEnd)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+
+          IconButton(
+            onPressed: clearLoop,
+            icon: Icon(
+              Icons.repeat_rounded,
+              color: loopStart != null && loopEnd != null
+                  ? purple
+                  : Colors.white70,
+            ),
+            tooltip: 'Clear A-B Loop',
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     controlsTimer?.cancel();
@@ -1783,7 +1959,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       SystemUiMode.edgeToEdge,
     );
 
-    controller.removeListener(checkLoop);
+    controller.removeListener(onVideoUpdate);
     controller.dispose();
     transformationController.dispose();
 
@@ -1793,220 +1969,204 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF08070D),
 
-      appBar: isFullscreen
+      appBar: isFullscreen || !showControls
           ? null
           : AppBar(
-              backgroundColor: Colors.black,
+              backgroundColor: const Color(0xFF08070D),
               foregroundColor: Colors.white,
-              title: const Text('VORTEX PLAYER'),
+              elevation: 0,
+              title: const Text(
+                'VORTEX PLAYER',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                  fontSize: 16,
+                ),
+              ),
               actions: [
-                IconButton(
+                buildControlButton(
+                  icon: Icons.zoom_out_map_rounded,
                   onPressed: resetZoom,
-                  icon: const Icon(Icons.zoom_out_map_rounded),
+                  tooltip: 'Reset Zoom',
                 ),
 
-                TextButton(
-                  onPressed: showSpeedMenu,
-                  child: Text(
-                    '${playbackSpeed}x',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                const SizedBox(width: 8),
 
-                IconButton(
+                buildControlButton(
+                  icon: Icons.fullscreen_rounded,
                   onPressed: toggleFullscreen,
-                  icon: const Icon(Icons.fullscreen_rounded),
+                  tooltip: 'Fullscreen',
                 ),
+
+                const SizedBox(width: 10),
               ],
             ),
 
-      body: Center(
-        child: isReady
-            ? GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: revealControls,
-                onDoubleTap: resetZoom,
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: revealControls,
 
-                child: InteractiveViewer(
-                  transformationController: transformationController,
-                  minScale: 1,
-                  maxScale: 5,
-                  panEnabled: true,
-                  scaleEnabled: true,
-                  boundaryMargin: const EdgeInsets.all(100),
-                  clipBehavior: Clip.hardEdge,
+        child: SafeArea(
+          top: !isFullscreen,
+          bottom: !isFullscreen,
 
-                  child: AspectRatio(
-                    aspectRatio: controller.value.aspectRatio,
+          child: isReady
+              ? Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Center(
+                      child: InteractiveViewer(
+                        transformationController:
+                            transformationController,
+                        minScale: 1,
+                        maxScale: 5,
+                        panEnabled: true,
+                        scaleEnabled: true,
+                        boundaryMargin: const EdgeInsets.all(100),
+                        clipBehavior: Clip.hardEdge,
 
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        VideoPlayer(controller),
-
-                        if (showControls) ...[
-                          IconButton(
-                            onPressed: togglePlay,
-                            iconSize: 75,
-                            color: Colors.white,
-                            icon: Icon(
-                              controller.value.isPlaying
-                                  ? Icons.pause_circle_filled
-                                  : Icons.play_circle_fill,
-                            ),
-                          ),
-
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Row(
-                              children: [
-                                TextButton(
-                                  onPressed: showSpeedMenu,
-                                  child: Text(
-                                    '${playbackSpeed}x',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-
-                                IconButton(
-                                  onPressed: resetZoom,
-                                  icon: const Icon(
-                                    Icons.zoom_out_map_rounded,
-                                    color: Colors.white,
-                                  ),
-                                ),
-
-                                IconButton(
-                                  onPressed: toggleFullscreen,
-                                  icon: Icon(
-                                    isFullscreen
-                                        ? Icons.fullscreen_exit
-                                        : Icons.fullscreen,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          Positioned(
-                            left: 15,
-                            right: 15,
-                            bottom: 10,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                VideoProgressIndicator(
-                                  controller,
-                                  allowScrubbing: true,
-                                  colors: const VideoProgressColors(
-                                    playedColor: purple,
-                                    bufferedColor: Colors.white38,
-                                    backgroundColor: Colors.white12,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 8),
-
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      formatDuration(
-                                        controller.value.position,
-                                      ),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-
-                                    Text(
-                                      formatDuration(
-                                        controller.value.duration,
-                                      ),
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 8),
-
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    TextButton(
-                                      onPressed: setLoopStart,
-                                      child: Text(
-                                        'A ${formatDuration(loopStart)}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-
-                                    TextButton(
-                                      onPressed: setLoopEnd,
-                                      child: Text(
-                                        'B ${formatDuration(loopEnd)}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-
-                                    IconButton(
-                                      onPressed: clearLoop,
-                                      icon: const Icon(
-                                        Icons.repeat_rounded,
-                                        color: Colors.white,
-                                      ),
-                                      tooltip: 'Clear A-B Loop',
-                                    ),
-                                  ],
-                                ),
-
-                                if (loopStart != null &&
-                                    loopEnd != null)
-                                  const Text(
-                                    'A-B LOOP ACTIVE',
-                                    style: TextStyle(
-                                      color: purple,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 2,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
+                        child: AspectRatio(
+                          aspectRatio:
+                              controller.value.aspectRatio,
+                          child: VideoPlayer(controller),
+                        ),
+                      ),
                     ),
+
+                    if (showControls) ...[
+                      Positioned(
+                        top: 12,
+                        right: 15,
+                        child: Row(
+                          children: [
+                            TextButton.icon(
+                              onPressed: showSpeedMenu,
+                              icon: const Icon(
+                                Icons.speed_rounded,
+                                color: Colors.white,
+                              ),
+                              label: Text(
+                                '${playbackSpeed}x',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                backgroundColor: Colors.black54,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(14),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            buildControlButton(
+                              icon: Icons.zoom_out_map_rounded,
+                              onPressed: resetZoom,
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            buildControlButton(
+                              icon: isFullscreen
+                                  ? Icons.fullscreen_exit_rounded
+                                  : Icons.fullscreen_rounded,
+                              onPressed: toggleFullscreen,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Center(
+                        child: IconButton(
+                          onPressed: togglePlay,
+                          iconSize: 76,
+                          style: IconButton.styleFrom(
+                            backgroundColor:
+                                Colors.black.withValues(alpha: 0.45),
+                            shape: const CircleBorder(),
+                          ),
+                          icon: Icon(
+                            controller.value.isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 55,
+                          ),
+                        ),
+                      ),
+
+                      Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(
+                            14,
+                            12,
+                            14,
+                            12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xE9161422),
+                            borderRadius: BorderRadius.circular(23),
+                            border: Border.all(
+                              color: Colors.white.withValues(
+                                alpha: 0.10,
+                              ),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 25,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              buildSeekBar(),
+
+                              const SizedBox(height: 8),
+
+                              buildLoopControls(),
+
+                              if (loopStart != null &&
+                                  loopEnd != null) ...[
+                                const SizedBox(height: 10),
+
+                                const Text(
+                                  'A-B LOOP ACTIVE',
+                                  style: TextStyle(
+                                    color: purple,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                )
+              : const Center(
+                  child: CircularProgressIndicator(
+                    color: purple,
                   ),
                 ),
-              )
-            : const CircularProgressIndicator(
-                color: purple,
-              ),
+        ),
       ),
     );
   }
