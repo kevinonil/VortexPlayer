@@ -82,26 +82,17 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int selectedIndex = 0;
 
-  final List<String> titles = [
-    'Discover',
-    'Videos',
-    'Music',
-    'Playlists',
-    'Settings',
-  ];
-
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomePage(onThemeChanged: widget.onThemeChanged),
-      const MediaPage(type: 'Videos'),
-      const MediaPage(type: 'Music'),
-      const PlaylistPage(),
-      SettingsPage(
-        isDark: widget.isDark,
-        onThemeChanged: widget.onThemeChanged,
-      ),
-    ];
+  HomePage(onThemeChanged: widget.onThemeChanged),
+  const MediaPage(type: 'Music'),
+  const PlaylistPage(),
+  SettingsPage(
+    isDark: widget.isDark,
+    onThemeChanged: widget.onThemeChanged,
+  ),
+];
 
     return Scaffold(
       appBar: AppBar(
