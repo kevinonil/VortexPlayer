@@ -87,9 +87,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
+        final pages = [
       HomePage(onThemeChanged: widget.onThemeChanged),
-      MediaPage(type: 'Videos'),
       MediaPage(type: 'Music'),
       PlaylistPage(),
       SettingsPage(
