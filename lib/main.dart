@@ -1384,3 +1384,141 @@ class SettingsTile extends StatelessWidget {
     );
   }
 }
+
+
+// ==========================================
+// VIDEO PLAYER PAGE
+// ==========================================
+
+class VideoPlayerPage extends StatefulWidget {
+  final String videoPath;
+
+  const VideoPlayerPage({
+    super.key,
+    required this.videoPath,
+  });
+
+  @override
+  State<VideoPlayerPage> createState() => _VideoPlayerPageState();
+}
+
+class _VideoPlayerPageState extends State<VideoPlayerPage> {
+  late VideoPlayerController controller;
+
+  bool isReady = false;
+  bool showControls = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    controller = VideoPlayerController.file(
+      File(widget.videoPath),
+    );
+
+    initializePlayer();
+  }
+
+  Future<void> initializePlayer() async {
+    try {
+      await controller.initialize();
+
+      if (!mounted) return;
+
+      setState(() {
+        isReady = true;
+      });
+
+      controller.play();
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Video loading failed: $error'),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  void togglePlay() {
+    setState(() {
+      if (controller.value.isPlaying) {
+        controller.pause();
+      } else {
+        controller.play();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('VORTEX PLAYER'),
+      ),
+
+      body: Center(
+        child: isReady
+            ? GestureDetector(
+                onTap: () {
+                  setState(() {
+                    showControls = !showControls;
+                  });
+                },
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    AspectRatio(
+                      aspectRatio:
+                          controller.value.aspectRatio,
+                      child: VideoPlayer(controller),
+                    ),
+
+                    if (showControls)
+                      IconButton(
+                        onPressed: togglePlay,
+                        iconSize: 75,
+                        color: Colors.white,
+                        icon: Icon(
+                          controller.value.isPlaying
+                              ? Icons.pause_circle_filled
+                              : Icons.play_circle_fill,
+                        ),
+                      ),
+
+                    if (showControls)
+                      Positioned(
+                        left: 15,
+                        right: 15,
+                        bottom: 10,
+                        child: VideoProgressIndicator(
+                          controller,
+                          allowScrubbing: true,
+                          colors: const VideoProgressColors(
+                            playedColor: purple,
+                            bufferedColor: Colors.white38,
+                            backgroundColor: Colors.white12,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              )
+            : const CircularProgressIndicator(
+                color: purple,
+              ),
+      ),
+    );
+  }
+}      
