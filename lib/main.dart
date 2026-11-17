@@ -4,6 +4,7 @@ import 'services/media_service.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const VortexApp());
@@ -190,37 +191,36 @@ class HomePage extends StatelessWidget {
   });
 
   Future<void> _browseVideos(BuildContext context) async {
-  try {
-    final file = await FilePicker.pickFile(
-      type: FileType.video,
-    );
+    try {
+      const platform = MethodChannel(
+        'com.vortexplayer.vortex_player/file_picker',
+      );
 
-    if (file == null || file.path == null) {
-      return;
-    }
+      final String? videoPath =
+          await platform.invokeMethod<String>('pickVideo');
 
-    final videoPath = file.path!;
+      if (videoPath == null || !context.mounted) {
+        return;
+      }
 
-    if (!context.mounted) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => VideoPlayerPage(
-          videoPath: videoPath,
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VideoPlayerPage(
+            videoPath: videoPath,
+          ),
         ),
-      ),
-    );
-  } catch (error) {
-    if (!context.mounted) return;
+      );
+    } catch (error) {
+      if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Could not open video: $error'),
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open video: $error'),
+        ),
+      );
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
